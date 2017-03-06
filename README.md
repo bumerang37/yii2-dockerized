@@ -4,44 +4,81 @@ Yii 2 Dockerized
 [![Latest Stable Version](https://poser.pugx.org/codemix/yii2-dockerized/v/stable.svg)](https://packagist.org/packages/codemix/yii2-dockerized)
 [![Total Downloads](https://poser.pugx.org/codemix/yii2-dockerized/downloads.svg)](https://packagist.org/packages/codemix/yii2-dockerized)
 
-A template for Yii 2 applications based on the
-[codemix/yii2-base](https://registry.hub.docker.com/u/codemix/yii2-base/) docker image.
+A template for docker based Yii 2 applications.
 
  * Ephemeral container, configured via environment variables
- * Testing container for easy testing
+ * Separated base image to configure all required PHP extensions and composer packages
  * Optional local configuration overrides for development/debugging (git-ignored)
  * Base scaffold code for login, signup and forgot-password actions
  * Flat configuration file structure
- * Supports docker image based development workflow
 
-The `yii2-base` image comes in three flavours:
 
- * **Apache with PHP module** (based on `php:7.0.8-apache` or `php:5.6.18-apache`)
- * **PHP-FPM** (based on `php:7.0.8-fpm` or `php:5.6.18-fpm`)
- * **HHVM** (based on `estebanmatias92/hhvm:3.8.1-fastcgi`)
+# How to use
 
-Quickstart
--------------
-
-You need to have [docker](http://www.docker.com) (1.10.0+) and
-[docker-compose](https://docs.docker.com/compose/install/) (1.6.0+) installed.
+First create a copy of our application template, for example with
+composer:
 
 ```sh
 composer create-project --no-install codemix/yii2-dockerized myproject
+```
+
+You could also just download the repo from github.
+
+## 1. Build a base image
+
+Your application will use its own base image which contains a bespoke
+PHP runtime with all requried extensions and composer packages. You will
+usually not have to update this image very often.
+
+Before you build that image you should:
+
+ * Set a name for your base image in `build/docker-compose.yml`
+ * Optionally add more PHP extensions in `build/Dockerfile`
+
+Then you can build the image:
+
+
+```sh
+cd myproject/base
+docker-compose build
+```
+
+## 2. Update composer dependencies
+
+During the first build the main composer packages e.g. for yii2 where
+already added to your base image. Each time you need to add or update
+packages first have to create an updated `composer.lock` and then rebuild
+your base image:
+
+
+```sh
+cd myproject/base
+# Add/udpate package information in build/composer.lock
+docker-compose run --rm composer require codemix/yii2-localeurls
+# Rebuild the base image
+docker-compose build
+```
+
+## 3. Local development
+
+During local development we will map the main project directory into the
+base image you just built. As local environments may differ (e.g. use
+different docker network settings) we usually keep `docker-compose.yml`
+out of version control. Instead we provide a `docker-compose-example.yml`
+with a reasonable example setup.
+
+As the runtime configuration should happen with environment variables,
+we use a `.env` file. We also keep this out of version control and
+only include a `.env-example` to get developers started.
+
+
+```sh
 cd myproject
 cp docker-compose-example.yml docker-compose.yml
 cp .env-example .env
-docker-compose up
-# From another terminal window:
+docker-compose up -d
 docker-compose run --rm web ./yii migrate
 ```
-
-> *Note:* If you don't have `composer` installed locally you can also use our docker image
-> to run composer:
->
-> ```
-> docker run --rm -v /srv/projects:/var/www/html codemix/yii2-base:2.0.11.2-apache composer create-project --no-install codemix/yii2-dockerized myproject
-> ```
 
 It may take some minutes to download the required docker images. When
 done, you can access the new app from [http://localhost:8080](http://localost:8080).
@@ -51,7 +88,5 @@ the local file owner id is different from `1000` which is the `www-data` user in
 To fix this, try:
 
 ```
-docker-compose run --rm web chown www-data web/assets runtime
+docker-compose exec chown www-data web/assets runtime
 ```
-
-Please check the [Wiki](https://github.com/codemix/yii2-dockerized/wiki) for full documentation.

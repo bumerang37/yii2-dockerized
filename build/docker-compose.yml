@@ -1,0 +1,27 @@
+version: '3'
+services:
+
+    # The base image that provides the PHP runtime and composer packages
+    # which are requried by the application. To (re-)build the image use:
+    #
+    #  docker-compose build
+    #
+    base:
+        # Specify a tag name for your base image here:
+        image: myapp-base:1.0
+        build: ./
+
+    # The composer container container to update the files in build/composer.*
+    # You will usually only ever run any of these commands:
+    #
+    #  docker-compose run --rm composer require [...]
+    #  docker-compose run --rm composer update [...]
+    #
+    # Afterwards make sure to rebuild the base image, so that the new
+    # packages get installed there.
+    #
+    composer:
+        image: myapp-base:1.0
+        volumes:
+            - ./:/var/www/html/
+        entrypoint: composer
